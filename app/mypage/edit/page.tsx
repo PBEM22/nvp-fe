@@ -67,6 +67,13 @@ export default function EditMyInfoPage() {
       const isSuccess = data.isSuccess || data.success;
 
       if (isSuccess && data.result) {
+        // memberId가 null인 경우 (정식 회원이 아닌 경우) 체크
+        if (!data.result.memberId && data.result.memberId !== 0) {
+          throw new Error(
+            "정식 회원으로 등록되지 않았거나 관리자의 승인을 받지 않은 상태입니다.\n개인정보 수정은 정식 회원으로 등록된 후 이용 가능합니다."
+          );
+        }
+
         // API 응답에서 male -> isMale, public -> isPublic로 매핑
         const mappedResult = {
           ...data.result,
@@ -87,7 +94,17 @@ export default function EditMyInfoPage() {
         setValue("major", mappedResult.major || "");
         setValue("isPublic", mappedResult.isPublic ?? true);
       } else {
-        throw new Error(data.message || "회원 정보를 불러오는데 실패했습니다.");
+        // API 응답에 result가 없는 경우, 백엔드 메시지 확인
+        const errorMessage = data.message || "회원 정보를 불러오는데 실패했습니다.";
+        
+        // 백엔드에서 "해당 회원을 찾을 수 없다"는 메시지가 오는 경우 더 명확하게 변경
+        if (errorMessage.includes("찾을 수 없") || errorMessage.includes("회원을 찾을 수 없")) {
+          throw new Error(
+            "정식 회원으로 등록되지 않았거나 관리자의 승인을 받지 않은 상태입니다.\n개인정보 수정은 정식 회원으로 등록된 후 이용 가능합니다."
+          );
+        }
+        
+        throw new Error(errorMessage);
       }
     } catch (err) {
       setError(
@@ -215,7 +232,7 @@ export default function EditMyInfoPage() {
             {/* Error Message */}
             {error && (
               <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-sm text-red-600">{error}</p>
+                <p className="text-sm text-red-600 whitespace-pre-line">{error}</p>
               </div>
             )}
 
