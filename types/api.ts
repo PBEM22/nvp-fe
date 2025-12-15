@@ -326,6 +326,8 @@ export interface MemberInfoResponse {
   memberId: number;
   /** 이름 */
   name?: string;
+  /** 이메일 */
+  email?: string;
   /** 등번호 */
   backNumber?: number;
   /** 학과 */
@@ -342,8 +344,6 @@ export interface MemberInfoResponse {
   positionName?: string;
   /** 최신 표시 이름 */
   displayName?: string;
-  /** 이메일 */
-  email?: string;
 }
 
 /**

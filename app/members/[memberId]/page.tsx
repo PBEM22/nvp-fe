@@ -74,7 +74,13 @@ export default function PublicMemberDetailPage() {
           const isSuccess = retryData.isSuccess || retryData.success;
 
           if (isSuccess && retryData.result) {
-            setMemberData(retryData.result);
+            // API 응답에서 male -> isMale, public -> isPublic로 매핑
+            const mappedResult = {
+              ...retryData.result,
+              isMale: retryData.result.isMale !== undefined ? retryData.result.isMale : retryData.result.male,
+              isPublic: retryData.result.isPublic !== undefined ? retryData.result.isPublic : retryData.result.public,
+            };
+            setMemberData(mappedResult);
           } else {
             throw new Error(
               retryData.message || "회원 정보를 불러오는데 실패했습니다."
@@ -89,7 +95,13 @@ export default function PublicMemberDetailPage() {
       const isSuccess = data.isSuccess || data.success;
 
       if (isSuccess && data.result) {
-        setMemberData(data.result);
+        // API 응답에서 male -> isMale, public -> isPublic로 매핑
+        const mappedResult = {
+          ...data.result,
+          isMale: data.result.isMale !== undefined ? data.result.isMale : data.result.male,
+          isPublic: data.result.isPublic !== undefined ? data.result.isPublic : data.result.public,
+        };
+        setMemberData(mappedResult);
       } else {
         throw new Error(data.message || "회원 정보를 불러오는데 실패했습니다.");
       }

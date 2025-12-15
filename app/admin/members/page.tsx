@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type {
@@ -77,17 +77,6 @@ export default function MembersPage() {
     }
   };
 
-  // 필터 변경 시 첫 페이지로 리셋 및 회원 목록 재조회
-  useEffect(() => {
-    setPage(0);
-    fetchMembers();
-  }, [selectedPeriod, selectedDepartment, keyword]);
-
-  // 페이지 변경 시 회원 목록 조회
-  useEffect(() => {
-    fetchMembers();
-  }, [page]);
-
   const fetchFilterOptions = async () => {
     setIsLoadingFilters(true);
     try {
@@ -142,10 +131,13 @@ export default function MembersPage() {
     }
   };
 
-  const fetchMembers = async () => {
-    setIsLoading(true);
-    setError(null);
+  // 전체 회원 데이터를 저장하는 상태
+  const [allMembers, setAllMembers] = useState<MemberInfoResponse[]>([]);
+  const [isLoadingAllMembers, setIsLoadingAllMembers] = useState(false);
 
+  // 전체 회원 데이터 가져오기 (필터링 전)
+  const fetchAllMembers = useCallback(async () => {
+    setIsLoadingAllMembers(true);
     try {
       const token = localStorage.getItem("accessToken");
       if (!token) {
@@ -153,79 +145,127 @@ export default function MembersPage() {
         return;
       }
 
-      const queryParams = new URLSearchParams({
-        page: page.toString(),
-        size: "20",
-      });
+      // 모든 페이지를 순회하여 전체 데이터 가져오기
+      let allMembersData: MemberInfoResponse[] = [];
+      let currentPage = 0;
+      let totalPagesCount = 1;
 
-      // 필터 파라미터 추가
-      if (selectedPeriod !== null) {
-        queryParams.append("periodNumber", selectedPeriod.toString());
-      }
-      if (selectedDepartment !== null) {
-        queryParams.append("departmentId", selectedDepartment.toString());
-      }
-      if (keyword.trim() !== "") {
-        queryParams.append("keyword", keyword.trim());
-      }
+      do {
+        const queryParams = new URLSearchParams({
+          page: currentPage.toString(),
+          size: "100", // 큰 사이즈로 가져오기
+        });
 
-      const response = await fetch(
-        getApiEndpoint(`/api/admin/members?${queryParams.toString()}`),
-        {
+        const apiUrl = getApiEndpoint(`/api/admin/members?${queryParams.toString()}`);
+        const response = await fetch(apiUrl, {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-        }
-      );
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          localStorage.removeItem("accessToken");
-          localStorage.removeItem("memberId");
-          router.push("/login");
-          return;
-        }
-        throw new Error("회원 목록을 불러오는데 실패했습니다.");
-      }
-
-      const data: any = await response.json();
-      if (data.isSuccess && data.result) {
-        // 관리자 API 응답을 MemberInfoResponse 형식으로 변환
-        const rawMemberList = data.result.content || [];
-        console.log("관리자 멤버 목록 API 응답:", {
-          totalElements: data.result.totalElements,
-          totalPages: data.result.totalPages,
-          rawMemberCount: rawMemberList.length,
-          sampleMember: rawMemberList[0],
         });
-        const memberList = rawMemberList.map((member: any) => ({
-          ...member,
-          // API가 MemberSummaryResponse만 반환하는 경우, 상세 정보가 없을 수 있음
-          // 하지만 실제 응답에 periodNumber, displayName, major가 포함되어 있다면 그대로 사용
-          periodNumber: member.periodNumber || member.period_number,
-          displayName: member.displayName || member.display_name,
-          major: member.major,
-        })) as MemberInfoResponse[];
-        console.log("변환된 멤버 목록:", {
-          memberCount: memberList.length,
-          filteredCount: memberList.filter((m) => m.memberId !== null && m.memberId !== undefined).length,
-        });
-        setMembers(memberList);
-        setTotalPages(data.result.totalPages || 0);
-        setTotalElements(data.result.totalElements || 0);
-      } else {
-        throw new Error(data.message || "회원 목록 조회 실패");
-      }
+
+        if (!response.ok) {
+          if (response.status === 401) {
+            localStorage.removeItem("accessToken");
+            localStorage.removeItem("memberId");
+            router.push("/login");
+            return;
+          }
+          throw new Error("회원 목록을 불러오는데 실패했습니다.");
+        }
+
+        const data: any = await response.json();
+        const isSuccess = data.isSuccess || data.success;
+        if (isSuccess && data.result) {
+          const rawMemberList = data.result.content || [];
+          const memberList = rawMemberList
+            .map((member: any) => ({
+              ...member,
+              periodNumber: member.periodNumber || member.period_number,
+              displayName: member.displayName || member.display_name,
+              major: member.major,
+              memberId: member.memberId ?? member.id,
+              email: member.email,
+            }))
+            .filter((member: any) => member.memberId !== null && member.memberId !== undefined && !isNaN(member.memberId)) as MemberInfoResponse[];
+          
+          allMembersData = [...allMembersData, ...memberList];
+          totalPagesCount = data.result.totalPages || 1;
+          currentPage++;
+        } else {
+          break;
+        }
+      } while (currentPage < totalPagesCount);
+
+      setAllMembers(allMembersData);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "회원 목록을 불러오는데 실패했습니다."
       );
     } finally {
-      setIsLoading(false);
+      setIsLoadingAllMembers(false);
     }
-  };
+  }, [router]);
+
+  // 클라이언트 사이드 필터링 및 페이지네이션
+  const applyFiltersAndPagination = useCallback(() => {
+    let filtered = [...allMembers];
+
+    // 기수 필터링
+    if (selectedPeriod !== null) {
+      filtered = filtered.filter((member) => member.periodNumber === selectedPeriod);
+    }
+
+    // 부서 필터링
+    if (selectedDepartment !== null) {
+      const department = departments.find((d) => d.id === selectedDepartment);
+      if (department) {
+        filtered = filtered.filter((member) => member.departmentName === department.name);
+      }
+    }
+
+    // 키워드 필터링 (이름 또는 학과)
+    if (keyword.trim() !== "") {
+      const keywordLower = keyword.trim().toLowerCase();
+      filtered = filtered.filter(
+        (member) =>
+          (member.name && member.name.toLowerCase().includes(keywordLower)) ||
+          (member.major && member.major.toLowerCase().includes(keywordLower))
+      );
+    }
+
+    // 페이지네이션
+    const pageSize = 20;
+    const startIndex = page * pageSize;
+    const endIndex = startIndex + pageSize;
+    const paginated = filtered.slice(startIndex, endIndex);
+    const totalPagesCount = Math.ceil(filtered.length / pageSize) || 1;
+
+    setMembers(paginated);
+    setTotalPages(totalPagesCount);
+    setTotalElements(filtered.length);
+    setIsLoading(false);
+  }, [allMembers, selectedPeriod, selectedDepartment, keyword, page, departments]);
+
+  // 전체 회원 데이터 가져오기
+  useEffect(() => {
+    fetchAllMembers();
+  }, [fetchAllMembers]);
+
+  // 필터링 및 페이지네이션 적용
+  useEffect(() => {
+    if (!isLoadingAllMembers && allMembers.length >= 0) {
+      applyFiltersAndPagination();
+    } else if (isLoadingAllMembers) {
+      setIsLoading(true);
+    }
+  }, [isLoadingAllMembers, allMembers, applyFiltersAndPagination]);
+
+  // 필터 변경 시 첫 페이지로 리셋
+  useEffect(() => {
+    setPage(0);
+  }, [selectedPeriod, selectedDepartment, keyword]);
 
   const handleResetFilters = () => {
     setSelectedPeriod(null);
@@ -318,7 +358,7 @@ export default function MembersPage() {
       setTimeout(() => {
         setIsUploadModalOpen(false);
         setUploadSuccess(false);
-        fetchMembers();
+        fetchAllMembers();
       }, 2000);
       
       alert(result);
@@ -508,7 +548,7 @@ export default function MembersPage() {
           <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
             <p className="text-sm text-red-600">{error}</p>
             <button
-              onClick={fetchMembers}
+              onClick={fetchAllMembers}
               className="mt-2 text-sm text-red-600 underline"
             >
               다시 시도
@@ -519,10 +559,28 @@ export default function MembersPage() {
         {/* Member List */}
         {!isLoading && !error && (
           <>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6">
-              {members
-                .filter((member) => member.memberId !== null && member.memberId !== undefined)
-                .map((member) => (
+            {members.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <div className="w-20 h-20 bg-gray-bg rounded-full flex items-center justify-center mb-4">
+                  <svg
+                    className="w-10 h-10 text-gray-text"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
+                    />
+                  </svg>
+                </div>
+                <p className="text-gray-text mb-2">등록된 회원이 없습니다</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6">
+                {members.map((member) => (
                   <Link
                     key={member.memberId}
                     href={`/admin/members/${member.memberId}`}
@@ -552,11 +610,18 @@ export default function MembersPage() {
                     <p className="text-xs text-gray-400 mb-1">기수 없음</p>
                   )}
                   {member.major ? (
-                    <p className="text-xs text-gray-text mb-2 truncate" title={member.major}>
+                    <p className="text-xs text-gray-text mb-1 truncate" title={member.major}>
                       {member.major}
                     </p>
                   ) : (
-                    <p className="text-xs text-gray-400 mb-2">학과 없음</p>
+                    <p className="text-xs text-gray-400 mb-1">학과 없음</p>
+                  )}
+                  {member.email ? (
+                    <p className="text-xs text-gray-text mb-2 truncate" title={member.email}>
+                      {member.email}
+                    </p>
+                  ) : (
+                    <p className="text-xs text-gray-400 mb-2">이메일 없음</p>
                   )}
                   <span
                     className={`tag-sm ${
@@ -578,11 +643,12 @@ export default function MembersPage() {
                       : member.membershipStatus}
                   </span>
                 </Link>
-              ))}
-            </div>
+                  ))}
+              </div>
+            )}
 
             {/* Pagination */}
-            {totalPages > 1 && (
+            {members.length > 0 && totalPages > 1 && (
               <div className="flex items-center justify-center gap-2 mt-6">
                 <button
                   onClick={() => setPage((p) => Math.max(0, p - 1))}

@@ -67,21 +67,25 @@ export default function EditMyInfoPage() {
       const isSuccess = data.isSuccess || data.success;
 
       if (isSuccess && data.result) {
-        setMemberData(data.result);
+        // API 응답에서 male -> isMale, public -> isPublic로 매핑
+        const mappedResult = {
+          ...data.result,
+          isMale: data.result.isMale !== undefined ? data.result.isMale : data.result.male,
+          isPublic: data.result.isPublic !== undefined ? data.result.isPublic : data.result.public,
+        };
+        setMemberData(mappedResult);
         
-        // 디버깅: isMale/male 값 확인
-        const isMale = data.result.isMale !== undefined 
-          ? (data.result.isMale === true || data.result.isMale === "true")
-          : (data.result.male === true || data.result.male === "true");
+        // 성별 값 추출 (isMale 또는 male)
+        const isMale = mappedResult.isMale === true || mappedResult.isMale === "true";
         
         // 폼에 초기값 설정
         const genderValue = isMale ? Gender.MALE : Gender.FEMALE;
         
-        setValue("name", data.result.name || "");
-        setValue("birthday", data.result.birthday || "");
+        setValue("name", mappedResult.name || "");
+        setValue("birthday", mappedResult.birthday || "");
         setValue("gender", genderValue);
-        setValue("major", data.result.major || "");
-        setValue("isPublic", data.result.isPublic ?? true);
+        setValue("major", mappedResult.major || "");
+        setValue("isPublic", mappedResult.isPublic ?? true);
       } else {
         throw new Error(data.message || "회원 정보를 불러오는데 실패했습니다.");
       }
@@ -106,13 +110,22 @@ export default function EditMyInfoPage() {
         return;
       }
 
+      // API 요청 데이터 준비
+      const requestBody = {
+        name: data.name,
+        birthday: data.birthday,
+        gender: data.gender,
+        major: data.major,
+        ...(data.isPublic !== undefined && { isPublic: data.isPublic }),
+      };
+
       const response = await fetch(getApiEndpoint("/api/v1/members/me"), {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify(requestBody),
       });
 
       if (!response.ok) {

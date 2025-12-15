@@ -36,9 +36,15 @@ export default function PublicMatchesPage() {
         throw new Error("대회 목록을 불러오는데 실패했습니다.");
       }
 
-      const data: TournamentListResponse = await response.json();
-      if (data.isSuccess && data.result) {
-        setTournaments(data.result);
+      const data: any = await response.json();
+      const isSuccess = data.isSuccess || data.success;
+      if (isSuccess && data.result) {
+        // API 응답의 sixPlayer를 isSixPlayer로 변환
+        const tournaments = data.result.map((t: any) => ({
+          ...t,
+          isSixPlayer: t.isSixPlayer ?? t.sixPlayer ?? false,
+        })) as TournamentResponse[];
+        setTournaments(tournaments);
       } else {
         throw new Error(data.message || "대회 목록을 불러오는데 실패했습니다.");
       }

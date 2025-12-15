@@ -38,13 +38,20 @@ export default function TournamentsPage() {
         throw new Error("대회 목록을 불러오는데 실패했습니다.");
       }
 
-      const data: TournamentListResponse = await response.json();
-      if (data.isSuccess && data.result) {
+      const data: any = await response.json();
+      const isSuccess = data.isSuccess || data.success;
+      if (isSuccess && data.result) {
         console.log("관리자 대회 목록 API 응답:", {
           tournamentCount: data.result.length,
           sampleTournament: data.result[0],
         });
-        const validTournaments = data.result.filter((t) => t.id !== null && t.id !== undefined);
+        // API 응답의 sixPlayer를 isSixPlayer로 변환
+        const validTournaments = data.result
+          .filter((t: any) => t.id !== null && t.id !== undefined)
+          .map((t: any) => ({
+            ...t,
+            isSixPlayer: t.isSixPlayer ?? t.sixPlayer ?? false,
+          })) as TournamentResponse[];
         console.log("유효한 대회 개수:", validTournaments.length);
         setTournaments(validTournaments);
       } else {

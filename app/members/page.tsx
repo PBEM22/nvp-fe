@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type {
@@ -33,20 +33,6 @@ export default function PublicMembersPage() {
   const [departments, setDepartments] = useState<DepartmentResponse[]>([]);
   const [isLoadingFilters, setIsLoadingFilters] = useState(false);
   const [currentPeriodNumber, setCurrentPeriodNumber] = useState<number | null>(null);
-
-  useEffect(() => {
-    fetchFilterOptions();
-    fetchCurrentPeriod();
-  }, []);
-
-  useEffect(() => {
-    setPage(0); // 필터 변경 시 첫 페이지로 리셋
-    fetchMembers();
-  }, [selectedPeriod, selectedDepartment, keyword]);
-
-  useEffect(() => {
-    fetchMembers();
-  }, [page]);
 
   const fetchFilterOptions = async () => {
     setIsLoadingFilters(true);
@@ -99,7 +85,8 @@ export default function PublicMembersPage() {
 
       if (response.ok) {
         const data: any = await response.json();
-        if (data.isSuccess && data.result) {
+        const isSuccess = data.isSuccess || data.success;
+        if (isSuccess && data.result) {
           setCurrentPeriodNumber(data.result.periodNumber);
         }
       }
@@ -108,7 +95,7 @@ export default function PublicMembersPage() {
     }
   };
 
-  const fetchMembers = async () => {
+  const fetchMembers = useCallback(async () => {
     setIsLoading(true);
     setError(null);
 
@@ -130,6 +117,16 @@ export default function PublicMembersPage() {
         queryParams.append("keyword", keyword.trim());
       }
 
+      const apiUrl = getApiEndpoint(`/api/v1/members?${queryParams.toString()}`);
+      console.log("회원 목록 API 호출:", {
+        url: apiUrl,
+        queryParams: queryParams.toString(),
+        selectedPeriod,
+        selectedDepartment,
+        keyword,
+        page,
+      });
+
       const headers: HeadersInit = {
         "Content-Type": "application/json",
       };
@@ -139,13 +136,10 @@ export default function PublicMembersPage() {
         headers.Authorization = `Bearer ${token}`;
       }
 
-      const response = await fetch(
-        getApiEndpoint(`/api/v1/members?${queryParams.toString()}`),
-        {
-          method: "GET",
-          headers,
-        }
-      );
+      const response = await fetch(apiUrl, {
+        method: "GET",
+        headers,
+      });
 
       if (!response.ok) {
         if (response.status === 401 || response.status === 403) {
@@ -183,7 +177,8 @@ export default function PublicMembersPage() {
       }
 
       const data: any = await response.json();
-      if (data.isSuccess && data.result) {
+      const isSuccess = data.isSuccess || data.success;
+      if (isSuccess && data.result) {
         const memberList = data.result.content || [];
         console.log("멤버 목록 API 응답:", {
           totalElements: data.result.totalElements,
@@ -204,7 +199,20 @@ export default function PublicMembersPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [page, selectedPeriod, selectedDepartment, keyword]);
+
+  useEffect(() => {
+    fetchFilterOptions();
+    fetchCurrentPeriod();
+  }, []);
+
+  useEffect(() => {
+    setPage(0); // 필터 변경 시 첫 페이지로 리셋
+  }, [selectedPeriod, selectedDepartment, keyword]);
+
+  useEffect(() => {
+    fetchMembers();
+  }, [fetchMembers]);
 
   return (
     <div className="min-h-screen bg-white pb-20">

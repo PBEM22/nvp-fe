@@ -748,8 +748,33 @@ export default function SignupPage() {
               )}
             </div>
 
+            {/* Terms Agreement */}
+            <div className="pt-2 pb-4">
+              <div className="bg-gray-bg p-4 rounded-lg">
+                <p className="text-xs text-gray-text leading-relaxed">
+                  회원가입 시{" "}
+                  <Link
+                    href="/terms"
+                    target="_blank"
+                    className="text-navy hover:underline font-medium"
+                  >
+                    서비스 이용약관
+                  </Link>
+                  {" "}및{" "}
+                  <Link
+                    href="/privacy"
+                    target="_blank"
+                    className="text-navy hover:underline font-medium"
+                  >
+                    개인정보처리방침
+                  </Link>
+                  에 동의한 것으로 간주됩니다.
+                </p>
+              </div>
+            </div>
+
             {/* Submit Button */}
-            <div className="pt-4">
+            <div className="pt-2">
               <button
                 type="submit"
                 disabled={isSubmitting}

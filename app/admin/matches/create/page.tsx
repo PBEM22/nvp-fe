@@ -80,9 +80,15 @@ export default function CreateMatchPage() {
           throw new Error("대회 목록을 불러오는데 실패했습니다.");
         }
 
-        const data: TournamentListResponse = await response.json();
-        if (data.isSuccess && data.result) {
-          setTournaments(data.result);
+        const data: any = await response.json();
+        const isSuccess = data.isSuccess || data.success;
+        if (isSuccess && data.result) {
+          // API 응답의 sixPlayer를 isSixPlayer로 변환
+          const mappedTournaments = data.result.map((t: any) => ({
+            ...t,
+            isSixPlayer: t.isSixPlayer ?? t.sixPlayer,
+          })) as TournamentResponse[];
+          setTournaments(mappedTournaments);
         } else {
           throw new Error(data.message || "대회 목록을 불러오는데 실패했습니다.");
         }
@@ -127,8 +133,9 @@ export default function CreateMatchPage() {
           throw new Error("상대 학교 목록을 불러오는데 실패했습니다.");
         }
 
-        const data: OpponentSchoolListResponse = await response.json();
-        if (data.isSuccess && data.result) {
+        const data: any = await response.json();
+        const isSuccess = data.isSuccess || data.success;
+        if (isSuccess && data.result) {
           setOpponentSchools(data.result);
         } else {
           throw new Error(data.message || "상대 학교 목록을 불러오는데 실패했습니다.");
@@ -179,14 +186,14 @@ export default function CreateMatchPage() {
         body: JSON.stringify(requestData),
       });
 
-      const responseData: ApiResponse<CreatedResponse> = await response.json().catch(() => ({
+      const responseData: any = await response.json().catch(() => ({
         isSuccess: false,
         success: false,
         code: "ERROR",
         message: "응답을 파싱하는데 실패했습니다.",
       }));
 
-      const isSuccess = responseData.isSuccess;
+      const isSuccess = responseData.isSuccess || responseData.success;
 
       if (!response.ok || !isSuccess) {
         if (response.status === 401) {
