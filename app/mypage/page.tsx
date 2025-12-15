@@ -282,9 +282,14 @@ export default function MyPage() {
             <div className="mb-6">
               <p className="text-gray-text text-sm mb-1">안녕하세요</p>
               <div className="flex items-center justify-between">
-                <h2 className="text-xl font-bold text-navy">
-                  {memberData.name || "회원"} 님
-                </h2>
+                <div>
+                  <h2 className="text-xl font-bold text-navy">
+                    {memberData.name || "회원"} 님
+                  </h2>
+                  {memberData.email && (
+                    <p className="text-sm text-gray-text mt-1">{memberData.email}</p>
+                  )}
+                </div>
               </div>
             </div>
 

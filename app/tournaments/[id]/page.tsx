@@ -81,7 +81,13 @@ export default function PublicTournamentDetailPage() {
       const isSuccess = data.isSuccess || data.success;
       
       if (isSuccess && data.result) {
-        setMatches(data.result);
+        console.log("경기 목록 API 응답:", {
+          matchCount: data.result.length,
+          sampleMatch: data.result[0],
+        });
+        const validMatches = data.result.filter((m: any) => (m.matchId || m.id) !== null && (m.matchId || m.id) !== undefined);
+        console.log("유효한 경기 개수:", validMatches.length);
+        setMatches(validMatches);
       } else {
         throw new Error(data.message || "경기 목록을 불러오는데 실패했습니다.");
       }
@@ -227,12 +233,19 @@ export default function PublicTournamentDetailPage() {
           </div>
         ) : (
           <div className="space-y-4">
-            {matches.map((match) => (
-              <Link
-                key={match.matchId}
-                href={`/matches/${match.matchId}`}
-                className="card p-4 hover:shadow-card-lg transition-shadow block"
-              >
+            {matches
+              .filter((match) => {
+                const id = (match as any).matchId ?? (match as any).id;
+                return id !== null && id !== undefined;
+              })
+              .map((match) => {
+                const matchId = (match as any).matchId ?? (match as any).id;
+                return (
+                  <Link
+                    key={matchId}
+                    href={`/matches/${matchId}`}
+                    className="card p-4 hover:shadow-card-lg transition-shadow block"
+                  >
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
                     <p className="text-sm font-semibold text-navy mb-1">
@@ -263,7 +276,8 @@ export default function PublicTournamentDetailPage() {
                   </div>
                 </div>
               </Link>
-            ))}
+                );
+              })}
           </div>
         )}
       </main>

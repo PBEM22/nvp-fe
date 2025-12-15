@@ -184,7 +184,14 @@ export default function PublicMembersPage() {
 
       const data: any = await response.json();
       if (data.isSuccess && data.result) {
-        setMembers(data.result.content || []);
+        const memberList = data.result.content || [];
+        console.log("멤버 목록 API 응답:", {
+          totalElements: data.result.totalElements,
+          totalPages: data.result.totalPages,
+          memberCount: memberList.length,
+          sampleMember: memberList[0],
+        });
+        setMembers(memberList);
         setTotalPages(data.result.totalPages || 0);
         setTotalElements(data.result.totalElements || 0);
       } else {
@@ -385,12 +392,14 @@ export default function PublicMembersPage() {
             ) : (
               <>
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6">
-                  {members.map((member) => (
-                    <Link
-                      key={member.memberId}
-                      href={`/members/${member.memberId}`}
-                      className="card p-4 hover:shadow-card-lg transition-shadow text-center"
-                    >
+                  {members
+                    .filter((member) => member.memberId !== null && member.memberId !== undefined)
+                    .map((member) => (
+                      <Link
+                        key={member.memberId}
+                        href={`/members/${member.memberId}`}
+                        className="card p-4 hover:shadow-card-lg transition-shadow text-center"
+                      >
                       <div className="w-16 h-16 bg-gray-bg rounded-full mx-auto mb-3 flex items-center justify-center">
                         <span className="text-2xl">👤</span>
                       </div>

@@ -40,7 +40,13 @@ export default function TournamentsPage() {
 
       const data: TournamentListResponse = await response.json();
       if (data.isSuccess && data.result) {
-        setTournaments(data.result);
+        console.log("관리자 대회 목록 API 응답:", {
+          tournamentCount: data.result.length,
+          sampleTournament: data.result[0],
+        });
+        const validTournaments = data.result.filter((t) => t.id !== null && t.id !== undefined);
+        console.log("유효한 대회 개수:", validTournaments.length);
+        setTournaments(validTournaments);
       } else {
         throw new Error(data.message || "대회 목록을 불러오는데 실패했습니다.");
       }
@@ -214,13 +220,15 @@ export default function TournamentsPage() {
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              {tournaments.map((tournament) => {
-                const dDay = calculateDDay(); // 날짜 정보가 없으므로 null 반환
-                return (
-                  <div
-                    key={tournament.id}
-                    className="card p-4 hover:shadow-card-lg transition-shadow relative"
-                  >
+              {tournaments
+                .filter((tournament) => tournament.id !== null && tournament.id !== undefined)
+                .map((tournament) => {
+                  const dDay = calculateDDay(); // 날짜 정보가 없으므로 null 반환
+                  return (
+                    <div
+                      key={tournament.id}
+                      className="card p-4 hover:shadow-card-lg transition-shadow relative"
+                    >
                     {/* 삭제 버튼 */}
                     <button
                       onClick={(e) => {

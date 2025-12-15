@@ -193,7 +193,14 @@ export default function MembersPage() {
       const data: any = await response.json();
       if (data.isSuccess && data.result) {
         // 관리자 API 응답을 MemberInfoResponse 형식으로 변환
-        const memberList = (data.result.content || []).map((member: any) => ({
+        const rawMemberList = data.result.content || [];
+        console.log("관리자 멤버 목록 API 응답:", {
+          totalElements: data.result.totalElements,
+          totalPages: data.result.totalPages,
+          rawMemberCount: rawMemberList.length,
+          sampleMember: rawMemberList[0],
+        });
+        const memberList = rawMemberList.map((member: any) => ({
           ...member,
           // API가 MemberSummaryResponse만 반환하는 경우, 상세 정보가 없을 수 있음
           // 하지만 실제 응답에 periodNumber, displayName, major가 포함되어 있다면 그대로 사용
@@ -201,6 +208,10 @@ export default function MembersPage() {
           displayName: member.displayName || member.display_name,
           major: member.major,
         })) as MemberInfoResponse[];
+        console.log("변환된 멤버 목록:", {
+          memberCount: memberList.length,
+          filteredCount: memberList.filter((m) => m.memberId !== null && m.memberId !== undefined).length,
+        });
         setMembers(memberList);
         setTotalPages(data.result.totalPages || 0);
         setTotalElements(data.result.totalElements || 0);
@@ -509,12 +520,14 @@ export default function MembersPage() {
         {!isLoading && !error && (
           <>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6">
-              {members.map((member) => (
-                <Link
-                  key={member.memberId}
-                  href={`/admin/members/${member.memberId}`}
-                  className="card p-4 hover:shadow-card-lg transition-shadow text-center"
-                >
+              {members
+                .filter((member) => member.memberId !== null && member.memberId !== undefined)
+                .map((member) => (
+                  <Link
+                    key={member.memberId}
+                    href={`/admin/members/${member.memberId}`}
+                    className="card p-4 hover:shadow-card-lg transition-shadow text-center"
+                  >
                   <div className="w-16 h-16 bg-gray-bg rounded-full mx-auto mb-3 flex items-center justify-center">
                     <span className="text-2xl">👤</span>
                   </div>
