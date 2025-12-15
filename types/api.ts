@@ -35,6 +35,8 @@ export enum MembershipStatus {
   ON_LEAVE = 'ON_LEAVE',
   /** 탈퇴 */
   WITHDRAWN = 'WITHDRAWN',
+  /** 정식 회원이 아님 (회원가입만 한 상태) */
+  NON_MEMBER = 'NON_MEMBER',
 }
 
 /**
@@ -272,8 +274,8 @@ export interface UpdateMyInfoRequest {
  * 회원 상세 정보 응답
  */
 export interface MemberDetailResponse {
-  /** 회원 고유 ID */
-  memberId: number;
+  /** 회원 고유 ID (정식 회원이 아닐 경우 null) */
+  memberId: number | null;
   /** 사용자 고유 ID */
   userId: number;
   /** 이메일 */

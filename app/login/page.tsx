@@ -1,21 +1,34 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
-import { useState } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import type { LoginRequest, LoginResponseWrapper } from "@/types/api";
 import { getApiEndpoint, getApiUrl } from "@/app/lib/api";
 
 /**
- * 로그인 페이지
+ * 로그인 페이지 콘텐츠
  */
-export default function LoginPage() {
+function LoginPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+
+  // URL 파라미터에서 에러 확인
+  useEffect(() => {
+    const errorParam = searchParams.get("error");
+    if (errorParam) {
+      if (errorParam === "oauth2AuthenticationError") {
+        setError("카카오 로그인에 실패했습니다. 다시 시도해주세요.");
+      } else {
+        setError("로그인에 실패했습니다. 다시 시도해주세요.");
+      }
+    }
+  }, [searchParams]);
 
   const {
     register,
@@ -335,6 +348,38 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * 로그인 페이지
+ */
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 bg-blue-light rounded-full flex items-center justify-center mx-auto mb-4 animate-spin">
+            <svg
+              className="w-8 h-8 text-navy"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+              />
+            </svg>
+          </div>
+          <p className="text-gray-dark">로딩 중...</p>
+        </div>
+      </div>
+    }>
+      <LoginPageContent />
+    </Suspense>
   );
 }
 

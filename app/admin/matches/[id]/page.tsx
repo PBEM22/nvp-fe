@@ -679,11 +679,13 @@ export default function MatchDetailPage() {
                       disabled={isLoadingMembers}
                     >
                       <option value="">선택 안함</option>
-                      {members.map((member) => (
-                        <option key={member.memberId} value={member.memberId}>
-                          {member.name}
-                        </option>
-                      ))}
+                      {members
+                        .filter((member) => member.memberId !== null)
+                        .map((member) => (
+                          <option key={member.memberId} value={member.memberId!}>
+                            {member.name}
+                          </option>
+                        ))}
                     </select>
                   </div>
 
@@ -704,11 +706,13 @@ export default function MatchDetailPage() {
                       disabled={isLoadingMembers}
                     >
                       <option value="">선택 안함</option>
-                      {members.map((member) => (
-                        <option key={member.memberId} value={member.memberId}>
-                          {member.name}
-                        </option>
-                      ))}
+                      {members
+                        .filter((member) => member.memberId !== null)
+                        .map((member) => (
+                          <option key={member.memberId} value={member.memberId!}>
+                            {member.name}
+                          </option>
+                        ))}
                     </select>
                   </div>
 
@@ -729,11 +733,13 @@ export default function MatchDetailPage() {
                       disabled={isLoadingMembers}
                     >
                       <option value="">선택 안함</option>
-                      {members.map((member) => (
-                        <option key={member.memberId} value={member.memberId}>
-                          {member.name}
-                        </option>
-                      ))}
+                      {members
+                        .filter((member) => member.memberId !== null)
+                        .map((member) => (
+                          <option key={member.memberId} value={member.memberId!}>
+                            {member.name}
+                          </option>
+                        ))}
                     </select>
                   </div>
 

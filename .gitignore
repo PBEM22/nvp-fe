@@ -65,7 +65,21 @@ dist
 build
 .cache
 
-# .md #
+# .md (가이드 문서들)
 환경변수_설정_가이드.md
 DEPLOYMENT.md
+CORS_설정_안내.md
+DNS_설정_순서_요약.md
+GCP_DNS_Vercel_연결_가이드.md
+OAuth_리다이렉트_URL_설정.md
+OAuth_회원조회_문제_해결.md
+백엔드_리다이렉트_도메인_확인.md
+도메인_소유권_확인_가이드.md
+Vercel_Verify_버튼_위치.md
+가비아_DNS_설정_가이드.md
+카카오_OAuth_설정_확인.md
+소셜로그인_디버깅_가이드.md
+소셜로그인_에러_디버깅.md
+소셜로그인_에러_원인분석.md
+배포_최적화_체크리스트.md
 swagger.json

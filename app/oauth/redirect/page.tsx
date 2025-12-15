@@ -28,43 +28,127 @@ function OAuthRedirectContent() {
       // URL 쿼리 파라미터에서 token 추출
       const token = searchParams.get("token");
 
+      console.log("OAuth redirect: 토큰 추출", {
+        hasToken: !!token,
+        tokenLength: token?.length,
+        fullUrl: window.location.href,
+      });
+
       if (!token) {
-        setError("로그인 정보를 불러올 수 없습니다.");
+        console.error("OAuth redirect: 토큰이 없습니다. URL:", window.location.href);
+        setError("로그인 정보를 불러올 수 없습니다. (토큰 없음)");
         setTimeout(() => {
           router.push("/login");
         }, 2000);
         return;
       }
 
+      // 토큰 디코딩 (URL 인코딩된 경우 대비)
+      // decodeURIComponent는 이미 디코딩된 문자열에 대해 원본을 반환하므로 안전합니다
+      let decodedToken: string;
+      try {
+        decodedToken = decodeURIComponent(token);
+      } catch (e) {
+        // 디코딩 실패 시 원본 사용 (이미 디코딩된 경우)
+        decodedToken = token;
+      }
+      
+      console.log("OAuth redirect: 토큰 처리 완료", {
+        originalLength: token.length,
+        decodedLength: decodedToken.length,
+        tokenPrefix: decodedToken.substring(0, 50),
+        tokenParts: decodedToken.split('.').length, // JWT는 3부분으로 구성
+        isJWTFormat: decodedToken.split('.').length === 3,
+      });
+
       try {
         // AccessToken을 localStorage에 저장
-        localStorage.setItem("accessToken", token);
+        localStorage.setItem("accessToken", decodedToken);
         
         // AccessToken을 쿠키에도 저장 (7일 유효)
-        setCookie("accessToken", token, 7);
+        setCookie("accessToken", decodedToken, 7);
 
         // /api/v1/members/me API를 호출하여 역할 및 사용자 정보 가져오기
-        const response = await fetch(getApiEndpoint("/api/v1/members/me"), {
+        const apiUrl = getApiEndpoint("/api/v1/members/me");
+        console.log("OAuth redirect: API 호출 시도", {
+          apiUrl,
+          tokenLength: decodedToken.length,
+          tokenPrefix: decodedToken.substring(0, 20) + "...",
+        });
+
+        const response = await fetch(apiUrl, {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
+            Authorization: `Bearer ${decodedToken}`,
           },
+        });
+
+        console.log("OAuth redirect: API 응답", {
+          status: response.status,
+          statusText: response.statusText,
+          ok: response.ok,
         });
 
         if (!response.ok) {
           if (response.status === 401) {
+            const errorData = await response.json().catch(() => ({}));
+            console.error("OAuth redirect: 401 인증 실패", {
+              status: response.status,
+              errorData,
+              tokenUsed: decodedToken.substring(0, 30) + "...",
+            });
             localStorage.removeItem("accessToken");
-            setError("로그인 정보를 불러올 수 없습니다.");
+            setError("로그인 정보를 불러올 수 없습니다. (인증 실패)");
             setTimeout(() => {
               router.push("/login");
             }, 2000);
             return;
           }
-          throw new Error("사용자 정보를 불러오는데 실패했습니다.");
+          const errorText = await response.text().catch(() => "");
+          console.error("OAuth redirect: API 호출 실패 (non-200)", {
+            status: response.status,
+            statusText: response.statusText,
+            url: apiUrl,
+            error: errorText.substring(0, 500), // 처음 500자만
+          });
+          throw new Error(`사용자 정보를 불러오는데 실패했습니다. (${response.status})`);
         }
 
-        const data: any = await response.json();
+        // 응답 본문을 먼저 텍스트로 읽기
+        const responseText = await response.text();
+        console.log("OAuth redirect: API 응답 본문 (raw)", {
+          status: response.status,
+          responseLength: responseText.length,
+          responsePreview: responseText.substring(0, 500), // 처음 500자만
+        });
+
+        // JSON 파싱 시도
+        let data: any;
+        try {
+          data = JSON.parse(responseText);
+        } catch (parseError) {
+          console.error("OAuth redirect: JSON 파싱 실패", {
+            responseText: responseText.substring(0, 1000),
+            parseError: parseError instanceof Error ? parseError.message : String(parseError),
+          });
+          throw new Error("서버 응답을 파싱할 수 없습니다. (JSON 형식 아님)");
+        }
+
+        // 응답 구조 확인
+        console.log("OAuth redirect: API 응답 데이터 (parsed)", {
+          hasIsSuccess: "isSuccess" in data,
+          hasSuccess: "success" in data,
+          isSuccess: data.isSuccess,
+          success: data.success,
+          hasResult: !!data.result,
+          hasMessage: !!data.message,
+          hasCode: !!data.code,
+          message: data.message,
+          code: data.code,
+          dataKeys: Object.keys(data),
+        });
+
         const isSuccess = data.isSuccess || data.success;
         
         if (isSuccess && data.result) {
@@ -93,11 +177,21 @@ function OAuthRedirectContent() {
             router.push("/");
           }
         } else {
+          console.error("OAuth redirect: API 응답 실패", {
+            data,
+            isSuccess,
+            hasResult: !!data.result,
+            message: data.message,
+          });
           throw new Error(data.message || "사용자 정보를 불러오는데 실패했습니다.");
         }
       } catch (err) {
-        console.error("OAuth redirect error:", err);
-        setError("로그인 정보를 불러올 수 없습니다.");
+        console.error("OAuth redirect error:", {
+          error: err,
+          errorMessage: err instanceof Error ? err.message : String(err),
+          tokenWasPresent: !!token,
+        });
+        setError(`로그인 정보를 불러올 수 없습니다. (${err instanceof Error ? err.message : "알 수 없는 오류"})`);
         setTimeout(() => {
           router.push("/login");
         }, 2000);
